@@ -1,13 +1,18 @@
 package com.example.bruno.ilernaauto_bruno_castro_v2.entidades;
 
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class Localizacion {
 
     private String direccion;
     private double latitud;
     private double longitud;
-
-
-
+    private List<Localizacion> puntos;
+    private DatabaseReference db;
     public Localizacion() {
     }
 
@@ -40,4 +45,13 @@ public class Localizacion {
     public void setLongitud(double longitud) {
         this.longitud = longitud;
     }
+
+
+    public void puntosUsuario (Localizacion l){
+
+        db = FirebaseDatabase.getInstance().getReference().child("localizaciones");
+        db.push().setValue(l);
+
+    }
+
 }

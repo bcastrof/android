@@ -27,6 +27,8 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -46,11 +48,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private GoogleMap mMap;
     private Marker marcador;
+    private Marker posicionSeleccionada;
     double lat = 0.0;
     double lng = 0.0;
     private String mensaje;
-    //creo un array de localizacion para almacenar las dir de las diferentes marcas
-    private List<Localizacion> localizaciones = new ArrayList<>();
+    private DatabaseReference db;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,17 +78,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         miUbicacion();
-
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(LatLng latLng) {
-                mMap.addMarker(new MarkerOptions().icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA)).title("Mi marca").position(latLng));
-
                 DireccionSeleccionada buscarDireccion = new DireccionSeleccionada(getApplicationContext());
                 buscarDireccion.execute("" + latLng.latitude, "" + latLng.longitude);   // Parámetros que recibe doInBackground
+                if(posicionSeleccionada != null) posicionSeleccionada.remove();
+                posicionSeleccionada = mMap.addMarker(new MarkerOptions().icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA)).title("Mi marca").position(latLng));
             }
         });
     }
+
 
     /*
      * Metodo que nos permite agregar un marcador con nuestra posición actual
@@ -128,8 +130,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static int PETICION_PERMISO_LOCALIZACION = 101;
 
     private void ubicacionWEB() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PETICION_PERMISO_LOCALIZACION);
             return;
         } else {
@@ -142,8 +143,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     //Como obtener nuestra ubicacion actual
     private void miUbicacion() {
         //Evaluo si tengo los servicios activados, de no ser asi devuelvo el usuario a la actividad principal
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PETICION_PERMISO_LOCALIZACION);
             return;
         } else {
@@ -217,7 +217,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Context context;
         //Instancio la clase localizacion
         Localizacion localizacion;
-
         //constructor de la clase que tiene como parametros el contexto
         DireccionSeleccionada(Context context) {
             this.context = context;
@@ -276,21 +275,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                          * de donde hemos colocado la marca.
                          */
                         Geocoder geocoder = new Geocoder(context);
-
                         //creo una lista de Address en la que voy almacenar un unico resultado
                         List<Address> list = geocoder.getFromLocation(latitud, longitud, 1);
                         //monto el objeto de la clase localizacion la provincia la obtengo del adress
                         localizacion = new Localizacion(list.get(0).getSubAdminArea(), latitud, longitud);
-                        //añado el objeto a un array donde guardando asi todas las posiciones que marque
-                        localizaciones.add(localizacion);
+                        localizacion.puntosUsuario(localizacion);
 
                     } catch (IOException e) {
                         e.printStackTrace();
-                    }
-
-                    //bucle para ver si estoy obteniendo el resultado deseado
-                    for (int i = 0; i < localizaciones.size(); i++) {
-                        System.out.println(localizaciones.get(i).getDireccion() + " " + localizaciones.get(i).getLatitud() + " " + localizaciones.get(i).getLongitud());
                     }
                 } else {
                     Toast.makeText(context, "Ups ha habido un problema", Toast.LENGTH_SHORT).show();
